@@ -53,37 +53,32 @@ void reader_unlock(server_log log) {
     pthread_mutex_unlock(&log->global_lock);
 }
 
-void writer_lock(server_log log) {
-    pthread_mutex_lock(&log->global_lock);
-    log->writers_waiting++;
-    while (log->writers_inside + log->readers_inside > 0)
-        pthread_cond_wait(&log->write_allowed, &log->global_lock);
-    log->writers_waiting--;
-    log->writers_inside++;
-    pthread_mutex_unlock(&log->global_lock);
-}
-
-void writer_unlock(server_log log) {
-    pthread_mutex_lock(&log->global_lock);
-    log->writers_inside--;
-    if (log->writers_inside == 0) {
-        pthread_cond_broadcast(&log->read_allowed);
-        pthread_cond_signal(&log->write_allowed);
+void destroy_log_list(server_log log){
+    struct LogNode* current = log->head;
+    while (current != NULL) {
+        struct LogNode* next = current->next;
+        free(current->data);
+        free(current);
+        current = next;
     }
-    pthread_mutex_unlock(&log->global_lock);
 }
 
 // Creates a new server log instance (stub)
 server_log create_log() {
-    // TODO: Allocate and initialize internal log structure
-    return (server_log)malloc(sizeof(struct Server_Log));
+    server_log log = malloc(sizeof(struct Server_Log));
+    init_lock(log);
+    return log;
 }
 
 // Destroys and frees the log (stub)
 void destroy_log(server_log log) {
-    // TODO: Free all internal resources used by the log
+    destroy_log_list(log);
+    pthread_mutex_destroy(&log->global_lock);
+    pthread_cond_destroy(&log->read_allowed);
+    pthread_cond_destroy(&log->write_allowed);
     free(log);
 }
+
 
 // Returns dummy log content as string (stub)
 int get_log(server_log log, char** dst) {
