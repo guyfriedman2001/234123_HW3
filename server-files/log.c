@@ -86,12 +86,18 @@ void destroy_log_list(server_log log){
 // Creates a new server log instance (stub)
 server_log create_log() {
     server_log log = malloc(sizeof(struct Server_Log));
+    if (log == NULL) {
+        return NULL; //TODO: maybe change the behavior
+    }
     init_lock(log);
     return log;
 }
 
 // Destroys and frees the log (stub)
 void destroy_log(server_log log) {
+    if (log == NULL) {
+        return; // TODO: maybe change the behavior
+    }
     destroy_log_list(log);
     pthread_mutex_destroy(&log->global_lock);
     pthread_cond_destroy(&log->read_allowed);
@@ -133,7 +139,7 @@ int get_log(server_log log, char** dst) {
     }
 
     char* ptr = *dst;
-    struct LogNode* current = log->head;
+    current = log->head;
     while (current != NULL) {
         memcpy(ptr, current->data, current->data_length);
         ptr += current->data_length;
@@ -173,7 +179,12 @@ void add_to_log(server_log log, const char* data, int data_len) {
     node->data_length = data_len;
     node->next = NULL;
 
-    log->tail->next = node; 
-    
+    if (log->tail == NULL)
+    {
+        log->tail->next = node; 
+    } else {
+        log->head = node; 
+    }
+    log->tail = node; 
     writer_unlock(log);
 }
