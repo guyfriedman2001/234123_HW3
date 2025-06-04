@@ -1,11 +1,77 @@
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "log.h"
+
+struct LogNode {
+    char* data;               
+    int data_length;             
+    struct LogNode* next;     
+};
+
+
 
 // Opaque struct definition
 struct Server_Log {
-    // TODO: Implement internal log storage (e.g., dynamic buffer, linked list, etc.)
+    struct LogEntry* head;
+    struct LogEntry* tail;
+
+    int readers_inside;
+    int writers_inside;
+    int writers_waiting;
+
+    pthread_cond_t read_allowed;
+    pthread_cond_t write_allowed;
+    pthread_mutex_t global_lock;
 };
+
+void init_lock(server_log log) {
+    log->head = NULL;
+    log->tail = NULL;
+    log->readers_inside = 0;
+    log->writers_inside = 0;
+    log->writers_waiting = 0;
+
+    pthread_cond_init(&log->read_allowed, NULL);
+    pthread_cond_init(&log->write_allowed, NULL);
+    pthread_mutex_init(&log->global_lock, NULL);
+}
+
+void reader_lock(server_log log) {
+    pthread_mutex_lock(&log->global_lock);
+    while (log->writers_inside > 0 || log->writers_waiting > 0)
+        pthread_cond_wait(&log->read_allowed, &log->global_lock);
+    log->readers_inside++;
+    pthread_mutex_unlock(&log->global_lock);
+}
+
+void reader_unlock(server_log log) {
+    pthread_mutex_lock(&log->global_lock);
+    log->readers_inside--;
+    if (log->readers_inside == 0)
+        pthread_cond_signal(&log->write_allowed);
+    pthread_mutex_unlock(&log->global_lock);
+}
+
+void writer_lock(server_log log) {
+    pthread_mutex_lock(&log->global_lock);
+    log->writers_waiting++;
+    while (log->writers_inside + log->readers_inside > 0)
+        pthread_cond_wait(&log->write_allowed, &log->global_lock);
+    log->writers_waiting--;
+    log->writers_inside++;
+    pthread_mutex_unlock(&log->global_lock);
+}
+
+void writer_unlock(server_log log) {
+    pthread_mutex_lock(&log->global_lock);
+    log->writers_inside--;
+    if (log->writers_inside == 0) {
+        pthread_cond_broadcast(&log->read_allowed);
+        pthread_cond_signal(&log->write_allowed);
+    }
+    pthread_mutex_unlock(&log->global_lock);
+}
 
 // Creates a new server log instance (stub)
 server_log create_log() {

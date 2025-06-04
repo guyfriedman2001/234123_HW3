@@ -22,7 +22,7 @@ void init_queue() {
 
 void enqueue_request(int connfd, struct timeval arrival) {
     pthread_mutex_lock(&queue_mutex);
-    while (size == QUEUE_SIZE) {
+    while (queue_is_full()) {
         pthread_cond_wait(&queue_not_full, &queue_mutex); // thread goes to sleep if queue is full
     }
 
@@ -37,7 +37,7 @@ void enqueue_request(int connfd, struct timeval arrival) {
 
 request_t dequeue_request() {
     pthread_mutex_lock(&queue_mutex);
-    while (size == 0) {
+    while (queue_is_empty()) {
         pthread_cond_wait(&queue_not_empty, &queue_mutex); // thread goes to sleep if queue is empty
     }
 
@@ -53,3 +53,9 @@ request_t dequeue_request() {
 int queue_is_empty() {
     return size == 0;
 }
+
+int queue_is_full() {
+    return size == QUEUE_SIZE;
+}
+
+

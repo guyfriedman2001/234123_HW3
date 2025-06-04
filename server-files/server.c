@@ -2,6 +2,7 @@
 #include "request.h"
 #include "log.h"
 #include "pthread.h"
+#include "queue.h"
 
 #define THREAD_POOL_SIZE 4
 
@@ -26,6 +27,27 @@ void getargs(int *port, int argc, char *argv[])
     }
     *port = atoi(argv[1]);
 }
+
+/// Worker thread function that processes requests from the queue
+void* worker_function(void* arg) {
+    while (1) {
+        request_t req = dequeue_request(); 
+
+        struct timeval dispatch;
+        gettimeofday(&dispatch, NULL);
+
+        threads_stats t = malloc(sizeof(struct Threads_stats));
+        t->id = pthread_self(); 
+
+        requestHandle(req.connfd, req.arrival, dispatch, t, log);
+
+        free(t);
+        Close(req.connfd); 
+    }
+    return NULL;
+}
+
+
 // TODO: HW3 — Initialize thread pool and request queue
 // This server currently handles all requests in the main thread.
 // You must implement a thread pool (fixed number of worker threads)
@@ -47,15 +69,14 @@ int main(int argc, char *argv[])
         pthread_create(&thread_pool[i], NULL, worker_function, NULL);
     }
 
-
-
     listenfd = Open_listenfd(port);
     while (1) {
         clientlen = sizeof(clientaddr);
         connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-        struct timeval arrival, dispatch;
-        gettimeofday(&arrival, NULL);
-        enqueue_request(connfd, arrival);
+
+        struct timeval arrival;
+        gettimeofday(&arrival, NULL); // Get the current time as the request arrival time
+        enqueue_request(connfd, arrival); // Enqueue the request with its arrival time
         // TODO: HW3 — Record the request arrival time here
 
         // DEMO PURPOSE ONLY:
@@ -85,12 +106,5 @@ int main(int argc, char *argv[])
     destroy_log(log);
 
     // TODO: HW3 — Add cleanup code for thread pool and queue
-}
-
-void* worker_function(void* arg) {
-    while (1) {
-
-    }
-    return NULL;
 }
 
