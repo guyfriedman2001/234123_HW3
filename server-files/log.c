@@ -53,6 +53,26 @@ void reader_unlock(server_log log) {
     pthread_mutex_unlock(&log->global_lock);
 }
 
+void writer_lock(server_log log) {
+    pthread_mutex_lock(&log->global_lock);
+    log->writers_waiting++;
+    while (log->writers_inside + log->readers_inside > 0)
+        pthread_cond_wait(&log->write_allowed, &log->global_lock);
+    log->writers_waiting--;
+    log->writers_inside++;
+    pthread_mutex_unlock(&log->global_lock);
+}
+
+void writer_unlock(server_log log) {
+    pthread_mutex_lock(&log->global_lock);
+    log->writers_inside--;
+    if (log->writers_inside == 0) {
+        pthread_cond_broadcast(&log->read_allowed);
+        pthread_cond_signal(&log->write_allowed);
+    }
+    pthread_mutex_unlock(&log->global_lock);
+}
+
 void destroy_log_list(server_log log){
     struct LogNode* current = log->head;
     while (current != NULL) {
@@ -98,4 +118,14 @@ int get_log(server_log log, char** dst) {
 void add_to_log(server_log log, const char* data, int data_len) {
     // TODO: Append the provided data to the log
     // This function should handle concurrent access
+    if (log == NULL || data == NULL || data_len <= 0) {
+        return; // Invalid log or data TODO: maybe change the behavior
+    }
+
+    writer_lock(log);
+
+
+
+    
+
 }
