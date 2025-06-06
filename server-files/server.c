@@ -41,6 +41,7 @@ void* worker_function(void* arg) {
     int id_in_array = args->thread_id_in_array;
     server_log serverLog = args->log; 
     threads_stats t = &threads_stats_array[id_in_array];
+    t->id = pthread_self();
 
     while (1) {
         request_t req = dequeue_request(); 
