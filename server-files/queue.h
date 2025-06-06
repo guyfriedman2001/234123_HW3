@@ -8,6 +8,7 @@
 typedef struct {
     int connfd; //the assigned socket of the client
     struct timeval arrival; //the time of arrival
+    struct timeval dispatch; //the time of dispatch
 } request_t;
 
 void init_queue();

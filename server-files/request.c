@@ -196,7 +196,7 @@ void requestHandle(int fd, struct timeval arrival, struct timeval dispatch, thre
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
     char filename[MAXLINE], cgiargs[MAXLINE];
     rio_t rio;
-
+	t_stats->total_req++; // Increment total request count
     Rio_readinitb(&rio, fd);
     Rio_readlineb(&rio, buf, MAXLINE);
     sscanf(buf, "%s %s %s", method, uri, version);
@@ -213,6 +213,7 @@ void requestHandle(int fd, struct timeval arrival, struct timeval dispatch, thre
         }
 
         if (is_static) {
+
             if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
                 requestError(fd, filename, "403", "Forbidden",
                              "OS-HW3 Server could not read this file",
@@ -221,7 +222,7 @@ void requestHandle(int fd, struct timeval arrival, struct timeval dispatch, thre
             }
 
             requestServeStatic(fd, filename, sbuf.st_size, arrival, dispatch, t_stats);
-
+			t_stats->stat_req++; // Increment static request count
         } else {
             if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
                 requestError(fd, filename, "403", "Forbidden",
@@ -231,6 +232,7 @@ void requestHandle(int fd, struct timeval arrival, struct timeval dispatch, thre
             }
 
             requestServeDynamic(fd, filename, cgiargs, arrival, dispatch, t_stats);
+			t_stats->dynm_req++; // Increment dynamic request count
         }
 
         // TODO: add log entry using add_to_log(server_log log, const char* data, int data_len);
@@ -238,7 +240,7 @@ void requestHandle(int fd, struct timeval arrival, struct timeval dispatch, thre
 
     } else if (!strcasecmp(method, "POST")) {
         requestServePost(fd, arrival, dispatch, t_stats, log);
-
+		t_stats->post_req++; // Increment POST request count
     } else {
         requestError(fd, method, "501", "Not Implemented",
                      "OS-HW3 Server does not implement this method",
