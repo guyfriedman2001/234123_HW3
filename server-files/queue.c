@@ -11,6 +11,14 @@ pthread_mutex_t queue_mutex;
 pthread_cond_t queue_not_empty;
 pthread_cond_t queue_not_full;
 
+int queue_is_empty() {
+    return size == 0;
+}
+
+int queue_is_full() {
+    return size == QUEUE_SIZE;
+}
+
 void init_queue() {
     pthread_mutex_init(&queue_mutex, NULL);
     pthread_cond_init(&queue_not_empty, NULL);
@@ -50,12 +58,6 @@ request_t dequeue_request() {
     return req;
 }
 
-int queue_is_empty() {
-    return size == 0;
-}
 
-int queue_is_full() {
-    return size == QUEUE_SIZE;
-}
 
 

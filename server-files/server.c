@@ -39,7 +39,7 @@ void* worker_function(void* arg) {
         threads_stats t = malloc(sizeof(struct Threads_stats));
         t->id = pthread_self(); 
 
-        requestHandle(req.connfd, req.arrival, dispatch, t, log);
+        requestHandle(req.connfd, req.arrival, dispatch, t, (server_log)arg);
 
         free(t);
         Close(req.connfd); 
@@ -57,7 +57,7 @@ void* worker_function(void* arg) {
 int main(int argc, char *argv[])
 {
     // Create the global server log
-    server_log log = create_log();
+    server_log serverLog = create_log();
 
     int listenfd, connfd, port, clientlen;
     struct sockaddr_in clientaddr;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     pthread_t* thread_pool = malloc(sizeof(pthread_t) * THREAD_POOL_SIZE);
     for (int i = 0; i < THREAD_POOL_SIZE; i++) {
-        pthread_create(&thread_pool[i], NULL, worker_function, NULL);
+        pthread_create(&thread_pool[i], NULL, worker_function, serverLog);
     }
 
     listenfd = Open_listenfd(port);
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     }
 
     // Clean up the server log before exiting
-    destroy_log(log);
+    destroy_log(serverLog);
 
     // TODO: HW3 — Add cleanup code for thread pool and queue
 }

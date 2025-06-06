@@ -234,6 +234,7 @@ void requestHandle(int fd, struct timeval arrival, struct timeval dispatch, thre
         }
 
         // TODO: add log entry using add_to_log(server_log log, const char* data, int data_len);
+		add_to_log(log, buf, strlen(buf));
 
     } else if (!strcasecmp(method, "POST")) {
         requestServePost(fd, arrival, dispatch, t_stats, log);

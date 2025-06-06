@@ -181,9 +181,11 @@ void add_to_log(server_log log, const char* data, int data_len) {
 
     if (log->tail == NULL)
     {
-        log->tail->next = node; 
+        log->head = node;
+        log->tail = node; 
     } else {
-        log->head = node; 
+        log->tail->next = node;
+        log->tail = node; 
     }
     log->tail = node; 
     writer_unlock(log);
