@@ -28,11 +28,20 @@ struct Threads_stats threads_stats_array[THREAD_POOL_SIZE]; // Array to hold thr
 // Parses command-line arguments
 void getargs(int *port, int argc, char *argv[])
 {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+    if (argc < 4) {
+        //fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         exit(1);
     }
     *port = atoi(argv[1]);
+}
+
+void get_threads_and_queue_size(int *threads, int* size, char *argv[])
+{
+    *threads = atoi(argv[2]);
+    *size = atoi(argv[3]);
+    if (threads <= 0 || size <= 0) {
+        exit(1);
+    }
 }
 
 /// Worker thread function that processes requests from the queue
@@ -41,7 +50,6 @@ void* worker_function(void* arg) {
     int id_in_array = args->thread_id_in_array;
     server_log serverLog = args->log; 
     threads_stats t = &threads_stats_array[id_in_array];
-    t->id = pthread_self();
 
     while (1) {
         request_t req = dequeue_request(); 
@@ -56,7 +64,7 @@ void* worker_function(void* arg) {
 
 void init_threads_stats_array(){
     for (int i = 0; i < THREAD_POOL_SIZE; i++) {
-        threads_stats_array[i].id = 0; 
+        threads_stats_array[i].id = i + 1; 
         threads_stats_array[i].stat_req = 0;
         threads_stats_array[i].dynm_req = 0;
         threads_stats_array[i].post_req = 0;
@@ -76,23 +84,21 @@ int main(int argc, char *argv[])
     // Create the global server log
     server_log serverLog = create_log();
 
-    int listenfd, connfd, port, clientlen;
+    int listenfd, connfd, port, clientlen,thread_pool_size,queue_size;
     struct sockaddr_in clientaddr;
 
     getargs(&port, argc, argv);
-    init_queue(); // Initialize the request queue
+    get_threads_and_queue_size(&thread_pool_size, &queue_size,argv);
+    init_queue(queue_size); // Initialize the request queue
     init_threads_stats_array(); // Initialize the thread statistics array
 
-
-
-    pthread_t* thread_pool = malloc(sizeof(pthread_t) * THREAD_POOL_SIZE);
-    thread_args* thread_args_array[THREAD_POOL_SIZE];
-    for (int i = 0; i < THREAD_POOL_SIZE; i++)
+    pthread_t* thread_pool = malloc(sizeof(pthread_t) * thread_pool_size);
+    thread_args* thread_args_array[thread_pool_size];
+    for (int i = 0; i < thread_pool_size; i++)
     {
         thread_args_array[i] = malloc(sizeof(thread_args));
         thread_args_array[i]->thread_id_in_array = i; // Assign thread ID in the array
         thread_args_array[i]->log = serverLog; // Assign the server log to the thread args
-
         pthread_create(&thread_pool[i], NULL, worker_function, thread_args_array[i]);
     }
     
@@ -129,7 +135,7 @@ int main(int argc, char *argv[])
         free(t); // Cleanup
         Close(connfd); // Close the connection*/
     }
-    for (int i = 0; i < THREAD_POOL_SIZE; i++)
+    for (int i = 0; i < thread_pool_size; i++)
     {
         pthread_join(thread_pool[i], NULL);
         free(thread_args_array[i]); 

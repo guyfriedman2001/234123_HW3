@@ -2,10 +2,11 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-static request_t request_queue[QUEUE_SIZE];
 static int start;
 static int end;
 static int size;
+static int queue_size = 1;
+static request_t* request_queue = NULL;
 
 pthread_mutex_t queue_mutex;
 pthread_cond_t queue_not_empty;
@@ -16,16 +17,18 @@ int queue_is_empty() {
 }
 
 int queue_is_full() {
-    return size == QUEUE_SIZE;
+    return size == queue_size;
 }
 
-void init_queue() {
+void init_queue(int queueSize) {
     pthread_mutex_init(&queue_mutex, NULL);
     pthread_cond_init(&queue_not_empty, NULL);
     pthread_cond_init(&queue_not_full, NULL);
     start = 0;
     end = 0;
     size = 0;
+    queue_size = queueSize;
+    request_queue = malloc(sizeof(request_t) * queue_size);
 }
 
 void enqueue_request(int connfd, struct timeval arrival) {
@@ -36,7 +39,7 @@ void enqueue_request(int connfd, struct timeval arrival) {
 
     request_queue[end].connfd = connfd;
     request_queue[end].arrival = arrival;
-    end = (end + 1) % QUEUE_SIZE; // "selects" the new tail
+    end = (end + 1) % queue_size; // "selects" the new tail
     size++;
 
     pthread_cond_signal(&queue_not_empty); // signal that the queue is not empty anymore
@@ -50,7 +53,7 @@ request_t dequeue_request() {
     }
 
     request_t req = request_queue[start];
-    start = (start + 1) % QUEUE_SIZE; // "selects" the new head
+    start = (start + 1) % queue_size; // "selects" the new head
     size--;
 
     pthread_cond_signal(&queue_not_full); // signal that the queue is not full anymore
